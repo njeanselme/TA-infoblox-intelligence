@@ -1,0 +1,78 @@
+{
+    "modelName": "Network_Intelligence",
+    "displayName": "Network Intelligence",
+    "description": "",
+    "objectSummary": {
+        "Event-Based": 0,
+        "Transaction-Based": 0,
+        "Search-Based": 1
+    },
+    "objects": [
+        {
+            "objectName": "Network_Intelligence",
+            "displayName": "Network Intelligence",
+            "parentName": "BaseSearch",
+            "comment": "",
+            "fields": [],
+            "calculations": [
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "cidr",
+                            "owner": "Network_Intelligence",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "cidr",
+                            "comment": "",
+                            "lookupOutputFieldName": "cidr"
+                        }
+                    ],
+                    "calculationType": "Lookup",
+                    "lookupName": "netmasktocidr",
+                    "comment": "",
+                    "lookupInputs": [
+                        {
+                            "inputField": "netmask",
+                            "lookupField": "netmask"
+                        }
+                    ],
+                    "owner": "Network_Intelligence",
+                    "calculationID": "u05julb0aj",
+                    "editable": true
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "ip",
+                            "owner": "Network_Intelligence",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "ip",
+                            "comment": ""
+                        }
+                    ],
+                    "calculationID": "r8lmufxwi1i",
+                    "owner": "Network_Intelligence",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "if( address==address , address.cidr , null)"
+                }
+            ],
+            "constraints": [],
+            "lineage": "Network_Intelligence",
+            "baseSearch": "sourcetype=infoblox-ipam-network:csv"
+        }
+    ],
+    "objectNameList": [
+        "Network_Intelligence"
+    ]
+}

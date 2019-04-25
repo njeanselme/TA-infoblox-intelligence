@@ -1,0 +1,6 @@
+<nav search_view="search" color="#3c444d">
+<view name="inputs" default="true" />
+<view name="configuration"/>
+<view name="search" label="Search"/>
+<view name="visualize_infoblox_threat_intelligence_data" label="Visualize"/>
+</nav>

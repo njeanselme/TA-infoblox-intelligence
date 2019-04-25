@@ -1,0 +1,547 @@
+<form>
+  <label>Visualize Infoblox Threat Intelligence data</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time" token="time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="multiselect" token="type">
+      <label>Type</label>
+      <fieldForLabel>Type</fieldForLabel>
+      <fieldForValue>type</fieldForValue>
+      <search>
+        <query>sourcetype="infoblox:threatintelligence:*" | stats count by type</query>
+        <earliest>$time.earliest$</earliest>
+        <latest>$time.latest$</latest>
+      </search>
+      <prefix>type=</prefix>
+      <delimiter> OR </delimiter>
+      <choice value="*">All</choice>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="class">
+      <label>Class</label>
+      <fieldForLabel>Class</fieldForLabel>
+      <fieldForValue>class</fieldForValue>
+      <search>
+        <query>sourcetype="infoblox:threatintelligence:*" | stats count by class</query>
+        <earliest>$time.earliest$</earliest>
+        <latest>$time.latest$</latest>
+      </search>
+      <prefix>class=</prefix>
+      <delimiter> OR </delimiter>
+      <choice value="*">All</choice>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="property">
+      <label>Property</label>
+      <fieldForLabel>Property</fieldForLabel>
+      <fieldForValue>property</fieldForValue>
+      <search>
+        <query>sourcetype="infoblox:threatintelligence:*" | stats count by property</query>
+        <earliest>$time.earliest$</earliest>
+        <latest>$time.latest$</latest>
+      </search>
+      <prefix>property=</prefix>
+      <delimiter> OR </delimiter>
+      <choice value="*">All</choice>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="profile">
+      <label>Profile</label>
+      <fieldForLabel>Profile</fieldForLabel>
+      <fieldForValue>profile</fieldForValue>
+      <search>
+        <query>sourcetype="infoblox:threatintelligence:*" | stats count by profile</query>
+        <earliest>$time.earliest$</earliest>
+        <latest>$time.latest$</latest>
+      </search>
+      <prefix>profile=</prefix>
+      <delimiter> OR </delimiter>
+      <choice value="*">All</choice>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="report">
+      <label>Report</label>
+      <fieldForLabel>Report</fieldForLabel>
+      <fieldForValue>report</fieldForValue>
+      <search>
+        <query>sourcetype="infoblox:threatintelligence:*" | stats count by extended.title | rename extended.title as report</query>
+        <earliest>$time.earliest$</earliest>
+        <latest>$time.latest$</latest>
+      </search>
+      <prefix>"</prefix>
+      <delimiter>" OR "</delimiter>
+      <suffix>"</suffix>
+      <choice value="*">All</choice>
+      <default>*</default>
+    </input>
+    <input type="text" token="indicator">
+      <label>Search</label>
+      <default>*</default>
+    </input>
+    <input type="text" token="cidrs">
+      <label>Limit to CIDRs ( comma separated)</label>
+      <default>*</default>
+      <change>
+        <eval token="splitted_cidrs">if($value$ == "" OR $value$ == "*","","cidrmatch(\"".mvjoin(split(replace($value$," ",""),","),"\",ip) OR cidrmatch(\"")."\",ip)")</eval>
+      </change>
+    </input>
+    <input type="dropdown" token="active">
+      <label>Active</label>
+      <choice value="">All</choice>
+      <choice value="expiration_timestamp &gt;= now">Active only</choice>
+      <default></default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Number of Threat indicators</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | stats count</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <table>
+        <title>Number of Threat indicators by type</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ | stats count by type</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="type">type="$row.type$"</set>
+          <set token="form.type">$row.type$</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <viz type="treemap_app.treemap">
+        <title>Threat indicators</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | stats count by class,property</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="treemap_app.treemap.colorMode">categorical</option>
+        <option name="treemap_app.treemap.maxCategories">25</option>
+        <option name="treemap_app.treemap.maxColor">#3fc77a</option>
+        <option name="treemap_app.treemap.minColor">#d93f3c</option>
+        <option name="treemap_app.treemap.numOfBins">6</option>
+        <option name="treemap_app.treemap.showLabels">true</option>
+        <option name="treemap_app.treemap.showLegend">true</option>
+        <option name="treemap_app.treemap.showTooltip">true</option>
+        <option name="treemap_app.treemap.useColors">true</option>
+        <option name="treemap_app.treemap.useZoom">true</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <drilldown>
+          <set token="property">property=$row.property$</set>
+          <set token="form.property">$row.property$</set>
+        </drilldown>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Extended Threat indicators</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rename extended.malware as Malware | top Malware</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Malware$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Extended Threat type</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rename extended.threattype as "Threat type" | top "Threat type"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Threat type$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <viz type="punchcard_app.punchcard">
+        <title>Threat / Risk / Confidence score matrix</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath 
+          | stats count median(extended.confidence_score.score) by extended.threat_score.rating, extended.risk_score.rating</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="punchcard_app.punchcard.colorMode">sequential</option>
+        <option name="punchcard_app.punchcard.labelRotation">horizontal</option>
+        <option name="punchcard_app.punchcard.maxColor">#dc4e41</option>
+        <option name="punchcard_app.punchcard.minColor">#f8be34</option>
+        <option name="punchcard_app.punchcard.numOfBins">6</option>
+        <option name="punchcard_app.punchcard.radiusScale">global</option>
+        <option name="punchcard_app.punchcard.useColors">true</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "risk_score\": \"{\\\"rating\\\": \\\"$row.extended.risk_score.rating$" AND "threat_score\": \"{\\\"rating\\\": \\\"$row.extended.threat_score.rating$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </viz>
+    </panel>
+    <panel>
+      <viz type="simple_xml_examples.tagcloud">
+        <title>Vectors cloud</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ vector
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath 
+          | rename extended.risk_score.vector as vector
+          | rename extended.confidence_score.vector as vector
+          | rename extended.threat_score.vector as vector
+          | makemv delim="/" allowempty=false vector
+          | stats count by vector</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="simple_xml_examples.tagcloud.labelField">vector</option>
+        <option name="simple_xml_examples.tagcloud.maxFontSize">32</option>
+        <option name="simple_xml_examples.tagcloud.minFontSize">8</option>
+        <option name="simple_xml_examples.tagcloud.valueField">count</option>
+        <drilldown>
+             <set token="indicator">$indicator$ AND "$row.vector$"</set>
+             <set token="form.indicator">$indicator$</set>
+         </drilldown>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Extended Threat Score</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.threat_score.score | sort - extended.threat_score.score | rename  extended.threat_score.score as "Threat score"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Threat score$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Extended Threat Rating</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.threat_score.rating | sort extended.threat_score.rating | rename  extended.threat_score.rating as "Threat rating"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Threat rating$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Extended Threat Vector</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.threat_score.vector | rename  extended.threat_score.vector as "Threat vector"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Threat vector$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Extended Risk Score</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.risk_score.score | sort - extended.risk_score.score | rename  extended.risk_score.score as "Risk score"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Risk score$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Extended Risk Rating</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.risk_score.rating | sort extended.risk_score.rating | rename  extended.risk_score.rating as "Risk rating"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Risk rating$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Extended Risk Vector</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.risk_score.vector | rename  extended.risk_score.vector as "Risk vector"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Risk vector$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Extended Confidence Score</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.confidence_score.score | sort - extended.confidence_score.score | rename extended.confidence_score.score as "Confidence score"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Confidence score$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Extended Confidence Rating</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.confidence_score.rating | sort extended.confidence_score.rating | rename extended.confidence_score.rating as "Confidence rating"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Confidence rating$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Extended Confidence Vector</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$
+          | rex mode=sed  "s/\\\//g" | rex mode=sed  "s/\"{/{/g" | rex mode=sed "s/}\"/}/g"  | spath | stats count by extended.confidence_score.vector | rename  extended.confidence_score.vector as "Confidence vector"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="indicator">$indicator$ AND "$row.Confidence vector$"</set>
+          <set token="form.indicator">$indicator$</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Filtered threat indicators</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | eval indicator=case(type == "URL", url, type == "IP", ip, type == "HOST", hostname)| table detected, type, class, property, profile, indicator, threat_level,confidence</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">15</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>New IOcs by property over time</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | timechart count by property</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="property">property="$click.name2$"</set>
+          <set token="form.property">$click.name2$</set>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Reports</title>
+        <search>
+          <query>sourcetype="infoblox:threatintelligence:*" $class$ $property$ $profile$ $type$ $indicator$ $report$ 
+          | eval expiration_timestamp=strptime(expiration,"%Y-%m-%dT%H:%M:%S.%3QZ") 
+          | eval now=now() 
+          | where $active$ 
+          | where $splitted_cidrs$ 
+          | dedup extended.title | rename extended.title as Report | table _time,Report</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">15</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="report">"$row.Report$"</set>
+          <set token="form.report">$row.Report$</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>
